@@ -1,6 +1,8 @@
 package com.example.composemediaplayer.ui.player
 
 import android.app.Application
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -32,14 +34,15 @@ class MusicPlayerViewModel(application: Application) : AndroidViewModel(applicat
     private var exoPlayer: ExoPlayer? = null
     private var hasEnded = false
 
+    private val _isFileDownloaded = mutableStateOf(false)
+    val isFileDownloaded: State<Boolean> get() = _isFileDownloaded
+
     private val repository: AudioRepository = AudioRepository(context)
 
     init {
-        // Initialize ExoPlayer
         exoPlayer = ExoPlayer.Builder(context).build()
     }
 
-    // Initialize the player with audio URL and playback position
     fun initializePlayer(audioUrl: String, initialPosition: Long) {
         val mediaItem = MediaItem.fromUri(audioUrl)
         exoPlayer?.apply {
@@ -56,14 +59,12 @@ class MusicPlayerViewModel(application: Application) : AndroidViewModel(applicat
         CoroutineScope(Dispatchers.Main).launch {
             val isCurrentlyPlaying = exoPlayer?.playWhenReady == true
 
-            // If playback has ended, reset to the start before playing
             if (hasEnded) {
-                exoPlayer?.seekTo(0)  // Seek to the beginning (position 0)
-                exoPlayer?.playWhenReady = true // Ensure playback starts immediately
-                _isPlaying.value = true  // Set the playing state to true
-                hasEnded = false  // Reset the hasEnded flag
+                exoPlayer?.seekTo(0)
+                exoPlayer?.playWhenReady = true
+                _isPlaying.value = true
+                hasEnded = false
             } else {
-                // Toggle play/pause when it's not ended
                 exoPlayer?.playWhenReady = !isCurrentlyPlaying
                 _isPlaying.value = !isCurrentlyPlaying
             }
@@ -80,7 +81,6 @@ class MusicPlayerViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    // Save playback progress to the database (or shared preferences)
     fun savePlaybackProgress(filename: String) {
         val progress = _currentPosition.value ?: 0L
         viewModelScope.launch(Dispatchers.IO) {
@@ -88,7 +88,12 @@ class MusicPlayerViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    // Cleanup and release the player when no longer needed
+    fun checkIfFileDownloaded(fileId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _isFileDownloaded.value = repository.isFileDownloaded(fileId)
+        }
+    }
+
     fun releasePlayer() {
         exoPlayer?.apply {
             playWhenReady = false
@@ -96,7 +101,6 @@ class MusicPlayerViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    // Set up listener to track playback state changes
     fun setPlayerListener() {
         exoPlayer?.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
@@ -112,7 +116,6 @@ class MusicPlayerViewModel(application: Application) : AndroidViewModel(applicat
         })
     }
 
-    // Seek to a specific position
     fun seekTo(position: Long) {
         exoPlayer?.seekTo(position)
         _currentPosition.value = position

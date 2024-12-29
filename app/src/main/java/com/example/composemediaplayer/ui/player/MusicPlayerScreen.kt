@@ -11,15 +11,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Slider
-import androidx.compose.material.SliderDefaults.InactiveTrackAlpha
 import androidx.compose.material.Text
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
@@ -48,6 +50,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun MusicPlayerScreen(
+    fileId: Int,
     playbackPos: Long,
     tab: String,
     audioUrl: String,
@@ -62,11 +65,12 @@ fun MusicPlayerScreen(
     val isLoading by viewModel.isLoading.observeAsState(true)
     val totalDuration by viewModel.totalDuration.observeAsState(0L)
     val coroutineScope = rememberCoroutineScope()
+    viewModel.checkIfFileDownloaded(fileId)
 
-    // Initialize player if not already initialized
+
     LaunchedEffect(audioUrl) {
         viewModel.initializePlayer(audioUrl, playbackPos)
-        viewModel.setPlayerListener() // Set the ExoPlayer listener
+        viewModel.setPlayerListener()
     }
 
     LaunchedEffect(isPlaying) {
@@ -97,8 +101,7 @@ fun MusicPlayerScreen(
         TopAppBar(title = { Text(text = title) }, navigationIcon = {
             IconButton(onClick = {
                 onBack()
-            }
-            ) {
+            }) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Back")
             }
         })
@@ -140,13 +143,12 @@ fun MusicPlayerScreen(
                                 ),
                                 contentDescription = "Play/Pause",
                                 modifier = Modifier.size(80.dp),
-                                tint = Color.Black
+                                tint = Color(0xFF5b39c6)
                             )
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Progress Bar
 
                         Slider(
                             value = currentPosition.toFloat(),
@@ -168,35 +170,15 @@ fun MusicPlayerScreen(
                             Text(text = formatTime(totalDuration))
                         }
 
+
                         // Download button
                         if (tab == "1") {
-                            DownloadButton(audioUrl = audioUrl, context = context)
-
-                            /*   Button(
-                                   onClick = {
-                                       // Handle download logic here
-                                       coroutineScope.launch {
-                                           val downloadSuccess = downloadAudioFile(context, audioUrl)
-                                           if (downloadSuccess) {
-                                               Toast.makeText(
-                                                   context,
-                                                   "Download completed!",
-                                                   Toast.LENGTH_SHORT
-                                               ).show()
-                                           } else {
-                                               Toast.makeText(
-                                                   context,
-                                                   "Download failed!",
-                                                   Toast.LENGTH_SHORT
-                                               )
-                                                   .show()
-                                           }
-                                       }
-                                   },
-                                   modifier = Modifier.padding(top = 16.dp)
-                               ) {
-                                   Text(text = "Download")
-                               }*/
+                            DownloadButton(
+                                fileId = fileId,
+                                downloaded = viewModel.isFileDownloaded.value,
+                                audioUrl = audioUrl,
+                                context = context
+                            )
                         }
 
                     }
@@ -212,58 +194,66 @@ fun MusicPlayerScreen(
 
 @Composable
 fun DownloadButton(
+    fileId: Int,
+    downloaded: Boolean,
     audioUrl: String,
     context: Context,
 ) {
-    // Track download state
-    var isDownloading by remember { mutableStateOf(false) }
-    var isDownloaded by remember { mutableStateOf(false) }
 
+    var isDownloading by remember { mutableStateOf(false) }
+    var isDownloaded by remember { mutableStateOf(downloaded) }
     val coroutineScope = rememberCoroutineScope()
 
     Button(
         onClick = {
-            // Prevent multiple clicks
             if (!isDownloading && !isDownloaded) {
                 isDownloading = true
                 coroutineScope.launch {
-                    val downloadSuccess = downloadAudioFile(context, audioUrl)
+                    val downloadSuccess = downloadAudioFile(context, fileId, audioUrl)
                     isDownloading = false
                     isDownloaded = downloadSuccess
 
-                    // Show a toast based on the download success
                     if (downloadSuccess) {
                         Toast.makeText(
-                            context,
-                            "Download completed!",
-                            Toast.LENGTH_SHORT
+                            context, "Download completed!", Toast.LENGTH_SHORT
                         ).show()
                     } else {
                         Toast.makeText(
-                            context,
-                            "Download failed!",
-                            Toast.LENGTH_SHORT
+                            context, "Download failed!", Toast.LENGTH_SHORT
                         ).show()
                     }
                 }
             }
         },
-        modifier = Modifier.padding(top = 16.dp),
-        enabled = !isDownloading // Disable button during download
+        modifier = Modifier
+            .padding(top = 16.dp)
+            .wrapContentSize(),
+        enabled = !isDownloading && !isDownloaded,
+        colors = ButtonDefaults.buttonColors(
+            backgroundColor = if (isDownloaded) Color.Gray else MaterialTheme.colors.primary,
+            disabledBackgroundColor = Color.Gray // Disabled color when already downloaded
+        )
     ) {
-        if (isDownloading) {
-            // Show a loading indicator while downloading
-            CircularProgressIndicator(
-                modifier = Modifier.size(24.dp),
-//                color = MaterialTheme.colors.onPrimary,
-                backgroundColor = MaterialTheme.colors.primary.copy(alpha = InactiveTrackAlpha),
-                strokeWidth = 2.dp
-            )
-        } else {
-            // Show the text based on download state
-            Text(text = if (isDownloaded) "Downloaded" else "Download")
+        Box(
+            modifier = Modifier
+                .wrapContentWidth()
+                .height(24.dp)
+        ) {
+            if (isDownloading) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .align(Alignment.Center), strokeWidth = 2.dp
+                )
+            } else {
+                Text(
+                    text = if (isDownloaded) "Downloaded" else "Download",
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
         }
     }
+
 }
 
 

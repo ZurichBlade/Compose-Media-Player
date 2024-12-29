@@ -1,6 +1,11 @@
 package com.example.composemediaplayer.ui.List
 
 import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -15,32 +20,40 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 
-
 class AudioViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = AudioRepository(application)
 
-    // LiveData for MediaItems (Tab 1)
     private val _remoteFiles = MutableLiveData<List<MediaItem>>()
     val remoteFiles: LiveData<List<MediaItem>> get() = _remoteFiles
 
-    // LiveData to track the loading state
     private val _loading = MutableLiveData<Boolean>(false)
     val loading: LiveData<Boolean> get() = _loading
 
-    // LiveData to track the error state (No internet or other error)
     private val _errorMessage = MutableLiveData<String?>()
     val errorMessage: MutableLiveData<String?> get() = _errorMessage
 
-    // LiveData for DownloadedFiles (Tab 2)
     private val _downloadedFiles = MutableLiveData<List<DownloadedFile>>()
     val downloadedFiles: LiveData<List<DownloadedFile>> get() = _downloadedFiles
 
-    init {
-        fetchRemoteFiles()
+    private val receiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            fetchDownloadedFiles()
+        }
     }
 
-    // Fetch media items for Tab 1
+    init {
+        fetchRemoteFiles()
+
+        val intentFilter = IntentFilter("ACTION_REFRESH_LIST")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getApplication<Application>().registerReceiver(
+                receiver, intentFilter,
+                Context.RECEIVER_EXPORTED
+            )
+        }
+    }
+
     private fun fetchRemoteFiles() {
         _loading.value = true
         _errorMessage.value = null
@@ -54,10 +67,10 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
                     _remoteFiles.value = items
                     _loading.value = false
                 }
-            }else{
+            } else {
                 withContext(Dispatchers.Main) {
                     _errorMessage.value = "No internet connection available"
-                    _loading.value = false  // Stop loading
+                    _loading.value = false
                 }
             }
 
@@ -65,7 +78,6 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Fetch downloaded files for Tab 2
     fun fetchDownloadedFiles() {
         viewModelScope.launch(Dispatchers.IO) {
             val files = repository.getAllDownloadedFiles()
@@ -73,5 +85,10 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
                 _downloadedFiles.value = files
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        getApplication<Application>().unregisterReceiver(receiver)
     }
 }

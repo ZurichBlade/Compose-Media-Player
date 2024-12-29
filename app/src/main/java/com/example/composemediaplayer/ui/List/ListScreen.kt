@@ -24,7 +24,6 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -33,13 +32,13 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.composemediaplayer.R
 import com.example.composemediaplayer.ui.player.MusicPlayerActivity
+import com.example.composemediaplayer.util.CommonUtils.formatTime
 
 @Composable
 fun ListScreen(tabId: String) {
 
     val viewModel: AudioViewModel = viewModel()
 
-    // Observe the appropriate LiveData based on the tab selected
     val remoteFiles by viewModel.remoteFiles.observeAsState(emptyList())
     val loading by viewModel.loading.observeAsState(false)
     val errorMessage by viewModel.errorMessage.observeAsState("")
@@ -52,7 +51,6 @@ fun ListScreen(tabId: String) {
 
     val context = LocalContext.current
 
-    // Show UI for Tab 1 (MediaItem list)
     if (tabId == "1") {
         if (loading) {
             Box(
@@ -76,7 +74,6 @@ fun ListScreen(tabId: String) {
                 }
             } else {
                 if (remoteFiles.isEmpty()) {
-                    // Show empty message if mediaItems is empty
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -98,9 +95,9 @@ fun ListScreen(tabId: String) {
                             ListItem(
                                 songTitle = mediaItem.title,
                                 onItemClick = {
-                                    // Handle item click, e.g., start music player activity
                                     val intent =
                                         Intent(context, MusicPlayerActivity::class.java).apply {
+                                            putExtra("fileId", mediaItem.id)
                                             putExtra("audioUrl", mediaItem.audioUrl)
                                             putExtra("tabNumber", tabId)
                                             putExtra("fileName", mediaItem.title)
@@ -122,11 +119,9 @@ fun ListScreen(tabId: String) {
 
     }
 
-    // Show UI for Tab 2 (DownloadedFile list)
     if (tabId == "2") {
 
         if (downloadedFiles.isEmpty()) {
-            // Show empty message if downloadedFiles is empty
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -147,9 +142,11 @@ fun ListScreen(tabId: String) {
                 items(downloadedFiles) { mediaItem ->
                     ListItem(
                         songTitle = mediaItem.fileName,
+                        progress = mediaItem.progress,
                         onItemClick = {
                             // Launch MusicPlayerActivity
                             val intent = Intent(context, MusicPlayerActivity::class.java).apply {
+                                putExtra("fileId", mediaItem.id)
                                 putExtra("audioUrl", mediaItem.filePath)
                                 putExtra("tabNumber", tabId)
                                 putExtra("fileName", mediaItem.fileName)
@@ -172,8 +169,8 @@ fun ListScreen(tabId: String) {
 
 @Composable
 fun ListItem(
-    albumArt: Painter = painterResource(id = R.drawable.music_icon),
     songTitle: String,
+    progress: Long = 0,
     onItemClick: () -> Unit,
 ) {
 
@@ -188,7 +185,7 @@ fun ListItem(
     ) {
         // Album Art
         Image(
-            painter = albumArt,
+            painter = painterResource(id = R.drawable.music_icon),
             contentDescription = "Album Art",
             modifier = Modifier
                 .size(64.dp)
@@ -207,11 +204,15 @@ fun ListItem(
                 fontWeight = FontWeight.Bold,
                 color = Color.Black
             )
-//            Text(
-//                text = albumName,
-//                fontSize = 14.sp,
-//                color = Color.Gray
-//            )
+            if (progress > 0) {
+                Text(
+                    modifier = Modifier.padding(top = 5.dp),
+                    text = formatTime(progress),
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+            }
+
         }
 
     }

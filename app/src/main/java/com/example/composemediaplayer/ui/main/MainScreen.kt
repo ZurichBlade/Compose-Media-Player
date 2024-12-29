@@ -54,7 +54,6 @@ fun MainScreen() {
             }
         }
 
-        // Update the current tab based on selectedTab
         LaunchedEffect(selectedTab.intValue) {
             navController.navigate(
                 when (selectedTab.intValue) {

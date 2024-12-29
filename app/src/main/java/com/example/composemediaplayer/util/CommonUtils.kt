@@ -20,7 +20,7 @@ object CommonUtils {
         return String.format("%02d:%02d", minutes, seconds)
     }
 
-    suspend fun downloadAudioFile(context: Context, audioUrl: String): Boolean {
+    suspend fun downloadAudioFile(context: Context, fileId: Int, audioUrl: String): Boolean {
         return withContext(Dispatchers.IO) {
             try {
                 val url = URL(audioUrl)
@@ -38,22 +38,26 @@ object CommonUtils {
                 // Save to Room Database
                 val db = AppDatabase.getDatabase(context)
                 db.audioFileDao()
-                    .insert(DownloadedFile(fileName = fileName, filePath = file.absolutePath))
+                    .insert(
+                        DownloadedFile(
+                            id = fileId,
+                            fileName = fileName,
+                            filePath = file.absolutePath
+                        )
+                    )
 
-                true // Download success
+                true
             } catch (e: Exception) {
                 e.printStackTrace()
-                false // Download failed
+                false
             }
         }
     }
 
-    // Fetch all downloaded files from Room
+
     suspend fun getAllDownloadedFiles(context: Context): List<DownloadedFile> {
         val db = AppDatabase.getDatabase(context)
         val audioFileDao = db.audioFileDao()
-
-        // Fetch and return all files from the database
         return audioFileDao.getAllDownloadedAudio()
     }
 

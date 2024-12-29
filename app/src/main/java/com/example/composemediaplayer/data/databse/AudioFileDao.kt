@@ -21,6 +21,7 @@ interface AudioFileDao {
     @Query("SELECT * FROM downloaded_file WHERE fileName = :fileName LIMIT 1")
     suspend fun getAudioFileByName(fileName: String): DownloadedFile?
 
-    @Delete
-    suspend fun delete(downloadedFile: DownloadedFile)
+    @Query("SELECT * FROM downloaded_file WHERE id = :fileId LIMIT 1")
+    suspend fun getAudioFileById(fileId: Int): DownloadedFile?
+
 }

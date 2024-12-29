@@ -1,6 +1,7 @@
 package com.example.composemediaplayer.ui.player
 
 import MusicPlayerScreen
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,12 +11,14 @@ import com.example.composemediaplayer.ui.player.ui.theme.ComposeMediaPlayerTheme
 class MusicPlayerActivity : ComponentActivity() {
 
     private lateinit var viewModel: MusicPlayerViewModel
+    private var tabId = "1"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val fileId = intent.getIntExtra("fileId",0)
         val audioUrl = intent.getStringExtra("audioUrl") ?: ""
-        val tab = intent.getStringExtra("tabNumber") ?: "1"
+        tabId = intent.getStringExtra("tabNumber") ?: "1"
         val fileName = intent.getStringExtra("fileName") ?: ""
         val playbackPos = intent.getLongExtra("playbackPos", 0L)
 
@@ -24,9 +27,10 @@ class MusicPlayerActivity : ComponentActivity() {
         setContent {
             ComposeMediaPlayerTheme {
                 MusicPlayerScreen(
+                    fileId= fileId,
                     playbackPos = playbackPos,
                     filename = fileName,
-                    tab = tab,
+                    tab = tabId,
                     audioUrl = audioUrl,
                     onBack = { finish() },
                     viewModel = viewModel
@@ -34,9 +38,8 @@ class MusicPlayerActivity : ComponentActivity() {
             }
         }
 
-        // Initialize the player in the ViewModel
         viewModel.initializePlayer(audioUrl, playbackPos)
-        viewModel.setPlayerListener() // Set the ExoPlayer listener
+        viewModel.setPlayerListener()
     }
 
     override fun onPause() {
@@ -48,6 +51,14 @@ class MusicPlayerActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         viewModel.releasePlayer()
+    }
+
+    override fun finish() {
+        super.finish()
+        if (tabId == "2") {
+            val intent = Intent("ACTION_REFRESH_LIST")
+            sendBroadcast(intent)
+        }
     }
 
 }
