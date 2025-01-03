@@ -89,6 +89,11 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
-        getApplication<Application>().unregisterReceiver(receiver)
+        try {
+            getApplication<Application>().unregisterReceiver(receiver)
+        } catch (e: IllegalArgumentException) {
+            e.printStackTrace()
+        }
+
     }
 }
